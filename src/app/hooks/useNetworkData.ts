@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { fetchNetworkData } from "../services/api";
 import {
   processNetworkData,
@@ -8,7 +8,6 @@ import {
   filterNetworkDataByMoniker,
   sortByBlockHistory,
   sortByIndexation,
-  NetworkDataItem,
 } from "../utils/dataProcessing";
 
 interface UseNetworkDataReturn {
@@ -29,87 +28,8 @@ interface UseNetworkDataReturn {
   sortByIndexation: (direction: "asc" | "desc") => void;
   clearSorting: () => void;
   togglePower: (rowId: number) => void;
+  setMapData: (mapData: Array<{ ip: string; country: string; lat: number; lon: number }>) => void;
 }
-
-const mockNetworkData: ProcessedNetworkData[] = [
-  {
-    id: 1,
-    rpc: "RPC",
-    flag: "JP",
-    ip: "http://127.0.0.1:32657",
-    nodeIcon: "/nodeIcon.svg",
-    provider: "Hetzner Online GmbH",
-    blockNumber: "8 345 677",
-    isOn: true,
-    type: "RPC",
-  },
-  {
-    id: 2,
-    rpc: "RPC",
-    flag: "US",
-    ip: "http://192.168.1.100:8080",
-    nodeIcon: "/nodeIcon.svg",
-    provider: "DigitalOcean LLC",
-    blockNumber: "8 345 678",
-    isOn: false,
-    type: "RPC",
-  },
-  {
-    id: 3,
-    rpc: "RPC",
-    flag: "DE",
-    ip: "http://203.0.113.1:8545",
-    nodeIcon: "/nodeIcon.svg",
-    provider: "AWS Europe",
-    blockNumber: "8 345 679",
-    isOn: true,
-    type: "RPC",
-  },
-  {
-    id: 4,
-    rpc: "RPC",
-    flag: "JP",
-    ip: "http://198.51.100.1:8545",
-    nodeIcon: "/nodeIcon.svg",
-    provider: "Linode LLC",
-    blockNumber: "8 345 680",
-    isOn: false,
-    type: "RPC",
-  },
-  {
-    id: 5,
-    rpc: "Peers",
-    flag: "JP",
-    ip: "http://127.0.0.1:32656",
-    nodeIcon: "/nodeIcon.svg",
-    provider: "Hetzner Online GmbH",
-    blockNumber: "8 345 681",
-    isOn: true,
-    type: "Peers",
-  },
-  {
-    id: 6,
-    rpc: "Peers",
-    flag: "US",
-    ip: "http://192.168.1.100:8081",
-    nodeIcon: "/nodeIcon.svg",
-    provider: "DigitalOcean LLC",
-    blockNumber: "8 345 682",
-    isOn: false,
-    type: "Peers",
-  },
-  {
-    id: 7,
-    rpc: "RPC",
-    flag: "US",
-    ip: "http://10.0.0.1:8545",
-    nodeIcon: "/nodeIcon.svg",
-    provider: "Google Cloud",
-    blockNumber: "8 345 681",
-    isOn: true,
-    type: "RPC",
-  },
-];
 
 export const useNetworkData = (): UseNetworkDataReturn => {
   const [data, setData] = useState<ProcessedNetworkData[]>([]);
@@ -122,6 +42,9 @@ export const useNetworkData = (): UseNetworkDataReturn => {
     blockHistory: null as "asc" | "desc" | null,
     indexation: null as "asc" | "desc" | null,
   });
+  const [mapData, setMapDataState] = useState<
+    Array<{ ip: string; country: string; lat: number; lon: number }>
+  >([]);
 
   const fetchNetworkDataCallback = useCallback(async () => {
     setLoading(true);
@@ -131,10 +54,9 @@ export const useNetworkData = (): UseNetworkDataReturn => {
       const { rpcs, peers } = await fetchNetworkData();
 
       if (rpcs.length > 0 || peers.length > 0) {
-        const rpcData = processNetworkData(rpcs, "RPC");
-        const peerData = processNetworkData(peers, "Peers");
+        const rpcData = processNetworkData(rpcs, "RPC", mapData);
+        const peerData = processNetworkData(peers, "Peers", mapData);
 
-        // Создаем уникальные id для объединенных данных
         const allData = [
           ...rpcData.map((item, index) => ({ ...item, id: index + 1 })),
           ...peerData.map((item, index) => ({ ...item, id: rpcData.length + index + 1 })),
@@ -143,18 +65,20 @@ export const useNetworkData = (): UseNetworkDataReturn => {
         setData(allData);
         setFilteredData(allData);
       } else {
-        setData(mockNetworkData);
-        setFilteredData(mockNetworkData);
-        setError("Using demo data - no data received");
+        setData([]);
+        setFilteredData([]);
       }
     } catch (err) {
-      setError("Failed to fetch network data");
-      setData(mockNetworkData);
-      setFilteredData(mockNetworkData);
+      console.error("Error fetching network data:", err);
+      setError(
+        `Failed to fetch network data: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+      setData([]);
+      setFilteredData([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mapData]);
 
   const handleSortByBlockHistory = useCallback(
     (direction: "asc" | "desc") => {
@@ -193,13 +117,11 @@ export const useNetworkData = (): UseNetworkDataReturn => {
         prevData.map((item) => (item.id === rowId ? { ...item, isOn: !item.isOn } : item))
       );
 
-      // Обновляем filteredData с учетом текущей сортировки
       setFilteredData((prevFilteredData) => {
         const updatedData = prevFilteredData.map((item) =>
           item.id === rowId ? { ...item, isOn: !item.isOn } : item
         );
 
-        // Применяем текущую сортировку по indexation если она активна
         if (sortConfig.indexation) {
           return sortByIndexation(updatedData, sortConfig.indexation);
         }
@@ -208,6 +130,13 @@ export const useNetworkData = (): UseNetworkDataReturn => {
       });
     },
     [sortConfig.indexation]
+  );
+
+  const setMapData = useCallback(
+    (newMapData: Array<{ ip: string; country: string; lat: number; lon: number }>) => {
+      setMapDataState(newMapData);
+    },
+    []
   );
 
   useEffect(() => {
@@ -223,7 +152,6 @@ export const useNetworkData = (): UseNetworkDataReturn => {
       filtered = filterNetworkDataByMoniker(filtered, searchTerm);
     }
 
-    // Применяем текущую сортировку если она активна
     if (sortConfig.indexation) {
       filtered = sortByIndexation(filtered, sortConfig.indexation);
     } else if (sortConfig.blockHistory) {
@@ -252,5 +180,6 @@ export const useNetworkData = (): UseNetworkDataReturn => {
     sortByIndexation: handleSortByIndexation,
     clearSorting,
     togglePower,
+    setMapData,
   };
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import NodeCentersModal from "./components/NodeCentersModal";
 import StatsWidget from "./components/StatsWidget";
 import ZoomControls from "./components/ZoomControls";
@@ -20,7 +20,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copyNotification, setCopyNotification] = useState<string | null>(null);
 
-  const { nodes, loading: nodesLoading, error: nodesError, totalNodes } = useNodeData();
+  const { nodes, loading: nodesLoading, error: nodesError, totalNodes, mapMarkers } = useNodeData();
   const {
     filteredData: networkData,
     loading: networkLoading,
@@ -33,6 +33,7 @@ export default function Home() {
     sortByBlockHistory,
     sortByIndexation,
     togglePower,
+    setMapData,
   } = useNetworkData();
 
   const handleZoomIn = useCallback(() => {
@@ -84,6 +85,79 @@ export default function Home() {
     handleCopy(allData);
   }, [networkData, handleCopy]);
 
+  // Передаем данные map-data в useNetworkData для сопоставления флагов
+  useEffect(() => {
+    if (mapMarkers.length > 0) {
+      const mapData = mapMarkers.map((marker) => ({
+        ip: marker.ip,
+        country: marker.country,
+        lat: marker.coordinates[1],
+        lon: marker.coordinates[0],
+      }));
+      setMapData(mapData);
+    }
+  }, [mapMarkers, setMapData]);
+
+  const mapProps = useMemo(
+    () => ({
+      zoom,
+      center: mapCenter,
+      onCenterChange: handleMapCenterChange,
+      onZoomChange: handleZoomChange,
+      markers: mapMarkers,
+    }),
+    [zoom, mapCenter, handleMapCenterChange, handleZoomChange, mapMarkers]
+  );
+
+  const statsWidgetProps = useMemo(
+    () => ({
+      onOpenModal: handleOpenModal,
+      nodes,
+      totalNodes,
+      loading: nodesLoading,
+    }),
+    [handleOpenModal, nodes, totalNodes, nodesLoading]
+  );
+
+  const searchBarProps = useMemo(
+    () => ({
+      onSearch: handleSearch,
+      value: searchTerm,
+      loading: networkLoading,
+    }),
+    [handleSearch, searchTerm, networkLoading]
+  );
+
+  const tabButtonsProps = useMemo(
+    () => ({
+      activeTab,
+      onTabChange: setActiveTab,
+      onCopyAll: handleCopyAll,
+    }),
+    [activeTab, setActiveTab, handleCopyAll]
+  );
+
+  const dataTableProps = useMemo(
+    () => ({
+      data: networkData,
+      onCopy: handleCopy,
+      onPowerToggle: handlePowerToggle,
+      sortConfig,
+      onSortByBlockHistory: sortByBlockHistory,
+      onSortByIndexation: sortByIndexation,
+      loading: networkLoading,
+    }),
+    [
+      networkData,
+      handleCopy,
+      handlePowerToggle,
+      sortConfig,
+      sortByBlockHistory,
+      sortByIndexation,
+      networkLoading,
+    ]
+  );
+
   return (
     <div className="min-h-screen bg-black">
       <div className="mx-auto mobile-container w-[1473px] pt-10 pb-10 px-[30px] max-lg:w-[390px] max-lg:pt-[30px] max-lg:pb-5 max-lg:px-0">
@@ -92,20 +166,10 @@ export default function Home() {
         </h1>
 
         <div className="flex gap-[110px] relative max-lg:flex-col-reverse max-lg:gap-0">
-          <StatsWidget
-            onOpenModal={handleOpenModal}
-            nodes={nodes}
-            totalNodes={totalNodes}
-            loading={nodesLoading}
-          />
+          <StatsWidget {...statsWidgetProps} />
 
           <div className="w-[711px] h-[425px] max-lg:w-full max-lg:h-[264px] max-lg:mb-5 relative">
-            <MapComponent
-              zoom={zoom}
-              center={mapCenter}
-              onCenterChange={handleMapCenterChange}
-              onZoomChange={handleZoomChange}
-            />
+            <MapComponent {...mapProps} />
 
             <div className="hidden max-lg:block absolute bottom-[27px] right-[27px]">
               <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
@@ -122,34 +186,16 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <h2 className="text-white font-[Manrope] font-normal text-[22px]">Locations</h2>
 
-          <SearchBar onSearch={handleSearch} value={searchTerm} loading={networkLoading} />
+          <SearchBar {...searchBarProps} />
         </div>
 
         <div className="mt-10" />
 
-        <TabButtons activeTab={activeTab} onTabChange={setActiveTab} onCopyAll={handleCopyAll} />
+        <TabButtons {...tabButtonsProps} />
 
         <div className="mt-5" />
 
-        <DataTable
-          data={networkData}
-          onCopy={handleCopy}
-          onPowerToggle={handlePowerToggle}
-          sortConfig={sortConfig}
-          onSortByBlockHistory={sortByBlockHistory}
-          onSortByIndexation={sortByIndexation}
-          loading={networkLoading}
-        />
-
-        {/* Показываем ошибки если есть */}
-        {(nodesError || networkError) && (
-          <div className="mt-4 p-4 bg-red-900/20 border border-red-500/50 rounded-lg">
-            <p className="text-red-400 text-sm">
-              {nodesError && `Ошибка загрузки данных нод: ${nodesError}`}
-              {networkError && `Ошибка загрузки сетевых данных: ${networkError}`}
-            </p>
-          </div>
-        )}
+        <DataTable {...dataTableProps} />
       </div>
 
       <Notification message={copyNotification} />

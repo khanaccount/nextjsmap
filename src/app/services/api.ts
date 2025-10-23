@@ -49,15 +49,16 @@ const apiClient = axios.create({
 
 export const fetchMapData = async (): Promise<MapDataItem[]> => {
   try {
-    const response = await apiClient.get("/api/map-data-alt");
-    return Array.isArray(response.data) ? response.data : [];
-  } catch {
-    try {
-      const response = await apiClient.get("/api/map-data");
-      return Array.isArray(response.data) ? response.data : [];
-    } catch {
-      throw new Error("Failed to fetch map data");
+    const response = await apiClient.get("/api/map-data");
+
+    if (response.data.error) {
+      throw new Error(response.data.error);
     }
+
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error("Error in fetchMapData:", error);
+    throw new Error("Failed to fetch map data");
   }
 };
 
@@ -66,8 +67,15 @@ export const fetchNetworkData = async (): Promise<{
   peers: NetworkDataItem[];
 }> => {
   try {
-    const response = await apiClient.get<NetworkApiResponse>("/api/network-data");
-    const data = response.data;
+    const response = await apiClient.get<NetworkApiResponse | { error: string }>(
+      "/api/network-data"
+    );
+
+    if ("error" in response.data) {
+      throw new Error(response.data.error);
+    }
+
+    const data = response.data as NetworkApiResponse;
 
     const rpcNodes: NetworkDataItem[] = [];
     const peerNodes: NetworkDataItem[] = [];
@@ -86,7 +94,8 @@ export const fetchNetworkData = async (): Promise<{
     }
 
     return { rpcs: rpcNodes, peers: peerNodes };
-  } catch {
+  } catch (error) {
+    console.error("Error in fetchNetworkData:", error);
     throw new Error("Failed to fetch network data");
   }
 };

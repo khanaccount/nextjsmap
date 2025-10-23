@@ -31,7 +31,7 @@ interface DataTableProps {
   loading?: boolean;
 }
 
-export default function DataTable({
+const DataTable = React.memo(function DataTable({
   data,
   onCopy,
   onPowerToggle,
@@ -68,6 +68,16 @@ export default function DataTable({
       <div className="h-[389px] border border-[#1B1C1F] rounded-[20px] pt-[10px] px-5 bg-transparent overflow-hidden max-lg:border-0 max-lg:rounded-none max-lg:px-0">
         <div className="flex items-center justify-center h-full">
           <div className="text-gray-400">Загрузка данных...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="h-[389px] border border-[#1B1C1F] rounded-[20px] pt-[10px] px-5 bg-transparent overflow-hidden max-lg:border-0 max-lg:rounded-none max-lg:px-0">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-gray-400">Нет данных о нодах</div>
         </div>
       </div>
     );
@@ -114,8 +124,7 @@ export default function DataTable({
 
           return (
             <React.Fragment key={`row-${row.id}`}>
-              {/* Десктопная версия */}
-              <div className="h-[83px] flex items-center bg-transparent border-b border-[#1B1C1F] hidden lg:flex">
+              <div className="h-[83px] items-center bg-transparent border-b border-[#1B1C1F] hidden lg:flex">
                 <div className="w-[394px] pl-[20px] flex items-center gap-[30px]">
                   <span className="font-[Poppins] font-normal text-[15px] text-[#DADADA]">
                     {row.rpc}
@@ -166,7 +175,6 @@ export default function DataTable({
                 </div>
               </div>
 
-              {/* Мобильная версия */}
               <div className="py-[10px] lg:hidden">
                 <div className="flex items-center pb-[20px]">
                   <span className="text-[#DADADA] font-[Poppins] text-[15px] font-normal mr-[15px]">
@@ -246,4 +254,6 @@ export default function DataTable({
       </div>
     </div>
   );
-}
+});
+
+export default DataTable;

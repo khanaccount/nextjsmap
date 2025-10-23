@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import { MAP_MARKERS } from "../utils/constants";
 import { calculateMapCenter, filterGeographies } from "../utils/helpers";
@@ -10,17 +10,106 @@ interface MapComponentProps {
   center?: [number, number];
   onCenterChange?: (newCenter: [number, number]) => void;
   onZoomChange?: (newZoom: number) => void;
+  markers?: Array<{
+    coordinates: [number, number];
+    country: string;
+    countryCode: string;
+    ip: string;
+    moniker: string;
+  }>;
 }
 
-export default function MapComponent({
+const MapMarkers = React.memo(
+  ({
+    markers,
+  }: {
+    markers?: Array<{
+      coordinates: [number, number];
+      country: string;
+      countryCode: string;
+      ip: string;
+      moniker: string;
+    }>;
+  }) => {
+    const displayMarkers = markers && markers.length > 0 ? markers : MAP_MARKERS;
+
+    return (
+      <>
+        {displayMarkers.map((marker, index) => (
+          <Marker key={index} coordinates={marker.coordinates as [number, number]}>
+            <circle
+              r={4}
+              fill="#3B82F6"
+              stroke="#ffffff"
+              strokeWidth={1}
+              style={{ pointerEvents: "none" }}
+            />
+          </Marker>
+        ))}
+      </>
+    );
+  }
+);
+
+MapMarkers.displayName = "MapMarkers";
+
+const MapGeography = React.memo(() => {
+  return (
+    <Geographies geography="https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json">
+      {({ geographies }) =>
+        geographies.filter(filterGeographies).map((geo) => (
+          <Geography
+            key={geo.rsmKey}
+            geography={geo}
+            fill="#181818"
+            stroke="#707070"
+            strokeWidth={0.5}
+            style={{
+              default: {
+                fill: "#181818",
+                stroke: "#707070",
+                strokeWidth: 0.5,
+                outline: "none",
+              },
+              hover: {
+                fill: "#2a2a2a",
+                stroke: "#707070",
+                strokeWidth: 0.5,
+                outline: "none",
+              },
+              pressed: {
+                fill: "#2a2a2a",
+                stroke: "#707070",
+                strokeWidth: 0.5,
+                outline: "none",
+              },
+            }}
+          />
+        ))
+      }
+    </Geographies>
+  );
+});
+
+MapGeography.displayName = "MapGeography";
+
+const MapComponent = React.memo(function MapComponent({
   zoom = 1,
   center = [0, 20],
   onCenterChange,
   onZoomChange,
+  markers,
 }: MapComponentProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+
+  const centerRef = useRef(center);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    centerRef.current = center;
+  }, [center]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);
@@ -41,16 +130,28 @@ export default function MapComponent({
         y: prev.y + deltaY,
       }));
 
-      const newCenter = calculateMapCenter(center, deltaX, deltaY, zoom);
-      onCenterChange?.(newCenter);
+      const newCenter = calculateMapCenter(centerRef.current, deltaX, deltaY, zoom);
+      centerRef.current = newCenter;
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+
+      updateTimeoutRef.current = setTimeout(() => {
+        onCenterChange?.(newCenter);
+      }, 16);
+
       setLastMousePos({ x: e.clientX, y: e.clientY });
     },
-    [isDragging, lastMousePos, center, zoom, onCenterChange]
+    [isDragging, lastMousePos, zoom, onCenterChange]
   );
 
   const handleGlobalMouseUp = useCallback(() => {
     setIsDragging(false);
-  }, []);
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+      onCenterChange?.(centerRef.current);
+    }
+  }, [onCenterChange]);
 
   React.useEffect(() => {
     if (isDragging) {
@@ -70,6 +171,9 @@ export default function MapComponent({
       document.removeEventListener("mouseup", handleGlobalMouseUp);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
     };
   }, [isDragging, handleGlobalMouseMove, handleGlobalMouseUp]);
 
@@ -113,7 +217,7 @@ export default function MapComponent({
           projection="geoMercator"
           projectionConfig={{
             scale: 100,
-            center: center,
+            center: centerRef.current,
           }}
           style={{
             width: "100%",
@@ -122,51 +226,8 @@ export default function MapComponent({
             pointerEvents: "none",
           }}
         >
-          <Geographies geography="https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json">
-            {({ geographies }) =>
-              geographies.filter(filterGeographies).map((geo) => (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  fill="#181818"
-                  stroke="#707070"
-                  strokeWidth={0.5}
-                  style={{
-                    default: {
-                      fill: "#181818",
-                      stroke: "#707070",
-                      strokeWidth: 0.5,
-                      outline: "none",
-                    },
-                    hover: {
-                      fill: "#2a2a2a",
-                      stroke: "#707070",
-                      strokeWidth: 0.5,
-                      outline: "none",
-                    },
-                    pressed: {
-                      fill: "#2a2a2a",
-                      stroke: "#707070",
-                      strokeWidth: 0.5,
-                      outline: "none",
-                    },
-                  }}
-                />
-              ))
-            }
-          </Geographies>
-
-          {MAP_MARKERS.map((marker, index) => (
-            <Marker key={index} coordinates={marker.coordinates as [number, number]}>
-              <circle
-                r={4}
-                fill="#3B82F6"
-                stroke="#ffffff"
-                strokeWidth={1}
-                style={{ pointerEvents: "none" }}
-              />
-            </Marker>
-          ))}
+          <MapGeography />
+          <MapMarkers markers={markers} />
         </ComposableMap>
       </div>
 
@@ -189,4 +250,6 @@ export default function MapComponent({
       )}
     </div>
   );
-}
+});
+
+export default MapComponent;

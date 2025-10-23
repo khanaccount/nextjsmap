@@ -102,16 +102,55 @@ export const processMapData = (data: MapDataItem[]): ProcessedNodeData[] => {
 
 export const processNetworkData = (
   data: NetworkDataItem[],
-  type: "RPC" | "Peers" = "RPC"
+  type: "RPC" | "Peers" = "RPC",
+  mapData?: Array<{ ip: string; country: string; lat: number; lon: number }>
 ): ProcessedNetworkData[] => {
   if (!Array.isArray(data) || data.length === 0) {
     return [];
   }
 
   return data.map((item, index) => {
+    const getStatus = (item: NetworkDataItem): string => {
+      const statuses = [];
+      if (item.rpcIp) statuses.push("RPC");
+      if (item.grpcIp) statuses.push("GRPC");
+      if (item.apiIp) statuses.push("REST");
+      if (item.evmIp) statuses.push("EVM RPC");
+      return statuses.join(", ") || "Unknown";
+    };
+
+    const getLocation = (item: NetworkDataItem): string => {
+      const locations = [];
+      if (item.rpcIp) locations.push(item.rpcIp);
+      if (item.grpcIp) locations.push(item.grpcIp);
+      if (item.apiIp) locations.push(item.apiIp);
+      if (item.evmIp) locations.push(item.evmIp);
+      return locations.join(", ") || "Unknown";
+    };
+
     const mainIp = item.rpcIp || item.grpcIp || item.apiIp || item.evmIp || "Unknown";
 
     const getCountryFlag = (ip: string): string => {
+      // Сначала пытаемся найти совпадение в map-data
+      if (mapData && mapData.length > 0) {
+        const ipWithoutPort = ip.split(":")[0];
+        const matchingNode = mapData.find((node) => node.ip === ipWithoutPort);
+        if (matchingNode) {
+          const countryMap: Record<string, string> = {
+            Finland: "FI",
+            Germany: "DE",
+            Singapore: "SG",
+            "United States": "US",
+            "United Kingdom": "GB",
+            France: "FR",
+            Russia: "RU",
+            Japan: "JP",
+          };
+          return countryMap[matchingNode.country] || "XX";
+        }
+      }
+
+      // Fallback к старой логике
       if (ip.includes("192.168") || ip.includes("10.0") || ip.includes("172.16")) {
         return "US";
       }
@@ -130,9 +169,9 @@ export const processNetworkData = (
 
     return {
       id: index + 1,
-      rpc: type,
+      rpc: getStatus(item),
       flag: getCountryFlag(mainIp),
-      ip: mainIp,
+      ip: getLocation(item),
       nodeIcon: "/nodeIcon.svg",
       provider: item.noder?.moniker || `Provider ${index + 1}`,
       blockNumber: item.uptime || "0",

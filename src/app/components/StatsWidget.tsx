@@ -20,7 +20,12 @@ interface StatsWidgetProps {
   loading?: boolean;
 }
 
-export default function StatsWidget({ onOpenModal, nodes, totalNodes, loading }: StatsWidgetProps) {
+const StatsWidget = React.memo(function StatsWidget({
+  onOpenModal,
+  nodes,
+  totalNodes,
+  loading,
+}: StatsWidgetProps) {
   const chartData = useMemo(() => {
     return nodes.slice(0, 6).map((node, index) => ({
       name: node.name,
@@ -30,7 +35,6 @@ export default function StatsWidget({ onOpenModal, nodes, totalNodes, loading }:
     }));
   }, [nodes]);
 
-  // Если данных нет или идет загрузка, показываем заглушку
   if (loading) {
     return (
       <div className="p-6 w-[346px] h-[282px] bg-[#0C0D0E] rounded-[20px] max-lg:w-full max-lg:h-auto max-lg:p-[15px]">
@@ -43,6 +47,22 @@ export default function StatsWidget({ onOpenModal, nodes, totalNodes, loading }:
         </div>
         <div className="flex items-center justify-center h-32">
           <div className="text-gray-400">Загрузка данных...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (nodes.length === 0) {
+    return (
+      <div className="p-6 w-[346px] h-[282px] bg-[#0C0D0E] rounded-[20px] max-lg:w-full max-lg:h-auto max-lg:p-[15px]">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-white font-[Poppins] font-light text-lg">Node Data center</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-white">0</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-32">
+          <div className="text-gray-400">Нет данных о нодах</div>
         </div>
       </div>
     );
@@ -124,4 +144,6 @@ export default function StatsWidget({ onOpenModal, nodes, totalNodes, loading }:
       </div>
     </div>
   );
-}
+});
+
+export default StatsWidget;

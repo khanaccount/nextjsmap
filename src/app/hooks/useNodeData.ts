@@ -21,76 +21,43 @@ interface UseNodeDataReturn {
   error: string | null;
   refetch: () => void;
   totalNodes: number;
+  mapMarkers: Array<{
+    coordinates: [number, number];
+    country: string;
+    countryCode: string;
+    ip: string;
+    moniker: string;
+  }>;
 }
-
-const mockNodeData: NodeData[] = [
-  {
-    id: "1",
-    name: "Node Center Alpha",
-    as: "AS12345",
-    country: "United States",
-    countryCode: "US",
-    ip: "192.168.1.1",
-    percentage: 25.5,
-    count: 25,
-  },
-  {
-    id: "2",
-    name: "Node Center Beta",
-    as: "AS67890",
-    country: "Germany",
-    countryCode: "DE",
-    ip: "203.0.113.1",
-    percentage: 20.3,
-    count: 20,
-  },
-  {
-    id: "3",
-    name: "Node Center Gamma",
-    as: "AS11111",
-    country: "Japan",
-    countryCode: "JP",
-    ip: "198.51.100.1",
-    percentage: 18.7,
-    count: 18,
-  },
-  {
-    id: "4",
-    name: "Node Center Delta",
-    as: "AS22222",
-    country: "United Kingdom",
-    countryCode: "GB",
-    ip: "203.0.113.2",
-    percentage: 15.2,
-    count: 15,
-  },
-  {
-    id: "5",
-    name: "Node Center Epsilon",
-    as: "AS33333",
-    country: "Russia",
-    countryCode: "RU",
-    ip: "84.247.131.170",
-    percentage: 12.8,
-    count: 12,
-  },
-  {
-    id: "6",
-    name: "Node Center Zeta",
-    as: "AS44444",
-    country: "France",
-    countryCode: "FR",
-    ip: "203.0.113.3",
-    percentage: 10.5,
-    count: 10,
-  },
-];
 
 export const useNodeData = (): UseNodeDataReturn => {
   const [nodes, setNodes] = useState<NodeData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalNodes, setTotalNodes] = useState(0);
+  const [mapMarkers, setMapMarkers] = useState<
+    Array<{
+      coordinates: [number, number];
+      country: string;
+      countryCode: string;
+      ip: string;
+      moniker: string;
+    }>
+  >([]);
+
+  const getCountryCode = (country: string): string => {
+    const countryMap: Record<string, string> = {
+      Finland: "FI",
+      Germany: "DE",
+      Singapore: "SG",
+      "United States": "US",
+      "United Kingdom": "GB",
+      France: "FR",
+      Russia: "RU",
+      Japan: "JP",
+    };
+    return countryMap[country] || "XX";
+  };
 
   const fetchNodeData = useCallback(async () => {
     setLoading(true);
@@ -105,15 +72,28 @@ export const useNodeData = (): UseNodeDataReturn => {
         setTotalNodes(total);
         const sortedNodes = [...processedData].sort((a, b) => b.percentage - a.percentage);
         setNodes(sortedNodes);
+
+        // Создаем маркеры для карты
+        const markers = rawData.map((item) => ({
+          coordinates: [item.lon, item.lat] as [number, number],
+          country: item.country,
+          countryCode: getCountryCode(item.country),
+          ip: item.ip,
+          moniker: item.noder.moniker,
+        }));
+        setMapMarkers(markers);
       } else {
-        setNodes(mockNodeData);
-        setTotalNodes(100);
-        setError("Using demo data - no data received");
+        setNodes([]);
+        setTotalNodes(0);
+        setMapMarkers([]);
       }
     } catch (err) {
-      setError("Failed to fetch node data");
-      setNodes(mockNodeData);
-      setTotalNodes(100);
+      console.error("Error fetching node data:", err);
+      setError(
+        `Failed to fetch node data: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+      setNodes([]);
+      setTotalNodes(0);
     } finally {
       setLoading(false);
     }
@@ -129,5 +109,6 @@ export const useNodeData = (): UseNodeDataReturn => {
     error,
     refetch: fetchNodeData,
     totalNodes,
+    mapMarkers,
   };
 };

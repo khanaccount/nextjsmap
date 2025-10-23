@@ -9,17 +9,16 @@ interface SearchBarProps {
   loading?: boolean;
 }
 
-export default function SearchBar({ 
-  placeholder = "Search node", 
-  onSearch, 
+const SearchBar = React.memo(function SearchBar({
+  placeholder = "Search node",
+  onSearch,
   value = "",
-  loading = false 
+  loading = false,
 }: SearchBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [searchValue, setSearchValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Синхронизируем внутреннее состояние с внешним значением
   useEffect(() => {
     setSearchValue(value);
   }, [value]);
@@ -48,7 +47,6 @@ export default function SearchBar({
 
   return (
     <>
-      {/* Десктопная версия - старый инпут */}
       <div className="relative hidden lg:block">
         <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none pl-5">
           <svg className="h-5 w-5" fill="none" stroke="#797979" viewBox="0 0 24 24">
@@ -67,7 +65,7 @@ export default function SearchBar({
           onChange={handleChange}
           disabled={loading}
           className={`block bg-transparent focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent w-[370px] py-[13px] pl-[46px] pr-5 border border-[#1B1C1F] rounded-full font-[Poppins] font-normal text-[13px] text-[#797979] ${
-            loading ? 'opacity-50 cursor-not-allowed' : ''
+            loading ? "opacity-50 cursor-not-allowed" : ""
           }`}
         />
         {loading && (
@@ -77,7 +75,6 @@ export default function SearchBar({
         )}
       </div>
 
-      {/* Мобильная версия - выдвигающийся инпут */}
       <div className="relative flex justify-end lg:hidden">
         <div
           className={`relative transition-all duration-300 ease-in-out ${
@@ -106,7 +103,7 @@ export default function SearchBar({
             className={`block bg-transparent focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-300 ease-in-out h-[41px] ${
               isExpanded ? "w-full pl-[46px] pr-5" : "w-[55px] pl-[46px] pr-0"
             } border border-[#1B1C1F] rounded-full font-[Poppins] font-normal text-[13px] text-[#797979] ${
-              loading ? 'opacity-50 cursor-not-allowed' : ''
+              loading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           />
           {loading && isExpanded && (
@@ -118,4 +115,6 @@ export default function SearchBar({
       </div>
     </>
   );
-}
+});
+
+export default SearchBar;

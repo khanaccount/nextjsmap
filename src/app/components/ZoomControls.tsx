@@ -7,7 +7,7 @@ interface ZoomControlsProps {
   onZoomOut: () => void;
 }
 
-export default function ZoomControls({ onZoomIn, onZoomOut }: ZoomControlsProps) {
+const ZoomControls = React.memo(function ZoomControls({ onZoomIn, onZoomOut }: ZoomControlsProps) {
   return (
     <div className="flex flex-col gap-[19px] items-end justify-end">
       <button
@@ -24,4 +24,6 @@ export default function ZoomControls({ onZoomIn, onZoomOut }: ZoomControlsProps)
       </button>
     </div>
   );
-}
+});
+
+export default ZoomControls;
