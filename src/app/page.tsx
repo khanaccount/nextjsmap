@@ -1,103 +1,113 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useCallback } from "react";
+import NodeCentersModal from "./components/NodeCentersModal";
+import StatsWidget from "./components/StatsWidget";
+import ZoomControls from "./components/ZoomControls";
+import SearchBar from "./components/SearchBar";
+import TabButtons from "./components/TabButtons";
+import DataTable from "./components/DataTable";
+import Notification from "./components/Notification";
+import MapComponent from "./components/MapComponent";
+import { useNodeData } from "./hooks/useNodeData";
+import { TABLE_DATA, ZOOM_LIMITS, NOTIFICATION_TIMEOUT } from "./utils/constants";
+import { copyToClipboard, calculateZoom } from "./utils/helpers";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [zoom, setZoom] = useState(1.5);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 20]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"RPC" | "Peers">("RPC");
+  const [copyNotification, setCopyNotification] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const { nodes } = useNodeData();
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((prev) => calculateZoom(prev, ZOOM_LIMITS.STEP, ZOOM_LIMITS));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((prev) => calculateZoom(prev, -ZOOM_LIMITS.STEP, ZOOM_LIMITS));
+  }, []);
+
+  const handleMapCenterChange = useCallback((newCenter: [number, number]) => {
+    setMapCenter(newCenter);
+  }, []);
+
+  const handleZoomChange = useCallback((newZoom: number) => {
+    setZoom(newZoom);
+  }, []);
+
+  const handleOpenModal = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  const handleCopy = useCallback(async (text: string) => {
+    const message = await copyToClipboard(text);
+    setCopyNotification(message);
+    setTimeout(() => setCopyNotification(null), NOTIFICATION_TIMEOUT);
+  }, []);
+
+  const handlePowerToggle = useCallback((rowId: number) => {
+    console.log(`Переключение питания для строки ${rowId}`);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-black">
+      <div className="mx-auto mobile-container w-[1473px] pt-10 pb-10 px-[30px] max-lg:w-[390px] max-lg:pt-[30px] max-lg:pb-5 max-lg:px-0">
+        <h1 className="text-white font-[Manrope] font-normal text-[22px] mb-10 max-lg:mb-5">
+          Node Data center
+        </h1>
+
+        <div className="flex gap-[110px] relative max-lg:flex-col-reverse max-lg:gap-0">
+          <StatsWidget onOpenModal={handleOpenModal} />
+
+          <div className="w-[711px] h-[425px] max-lg:w-full max-lg:h-[264px] max-lg:mb-5 relative">
+            <MapComponent
+              zoom={zoom}
+              center={mapCenter}
+              onCenterChange={handleMapCenterChange}
+              onZoomChange={handleZoomChange}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+
+            <div className="hidden max-lg:block absolute bottom-[27px] right-[27px]">
+              <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
+            </div>
+          </div>
+
+          <div className="absolute bottom-0 right-0 max-lg:hidden">
+            <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className="mt-10 max-lg:mt-5" />
+
+        <div className="flex items-center justify-between">
+          <h2 className="text-white font-[Manrope] font-normal text-[22px]">Locations</h2>
+
+          <SearchBar />
+        </div>
+
+        <div className="mt-10" />
+
+        <TabButtons
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onCopyAll={() => handleCopy("Все данные скопированы")}
+        />
+
+        <div className="mt-5" />
+
+        <DataTable data={TABLE_DATA} onCopy={handleCopy} onPowerToggle={handlePowerToggle} />
+      </div>
+
+      <Notification message={copyNotification} />
+
+      <NodeCentersModal isOpen={isModalOpen} onClose={handleCloseModal} nodes={nodes} />
     </div>
   );
 }
