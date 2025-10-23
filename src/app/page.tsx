@@ -10,17 +10,30 @@ import DataTable from "./components/DataTable";
 import Notification from "./components/Notification";
 import MapComponent from "./components/MapComponent";
 import { useNodeData } from "./hooks/useNodeData";
-import { TABLE_DATA, ZOOM_LIMITS, NOTIFICATION_TIMEOUT } from "./utils/constants";
+import { useNetworkData } from "./hooks/useNetworkData";
+import { ZOOM_LIMITS, NOTIFICATION_TIMEOUT } from "./utils/constants";
 import { copyToClipboard, calculateZoom } from "./utils/helpers";
 
 export default function Home() {
   const [zoom, setZoom] = useState(1.5);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 20]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"RPC" | "Peers">("RPC");
   const [copyNotification, setCopyNotification] = useState<string | null>(null);
 
-  const { nodes } = useNodeData();
+  const { nodes, loading: nodesLoading, error: nodesError, totalNodes } = useNodeData();
+  const {
+    filteredData: networkData,
+    loading: networkLoading,
+    error: networkError,
+    searchTerm,
+    setSearchTerm,
+    activeTab,
+    setActiveTab,
+    sortConfig,
+    sortByBlockHistory,
+    sortByIndexation,
+    togglePower,
+  } = useNetworkData();
 
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => calculateZoom(prev, ZOOM_LIMITS.STEP, ZOOM_LIMITS));
@@ -52,9 +65,24 @@ export default function Home() {
     setTimeout(() => setCopyNotification(null), NOTIFICATION_TIMEOUT);
   }, []);
 
-  const handlePowerToggle = useCallback((rowId: number) => {
-    console.log(`Переключение питания для строки ${rowId}`);
-  }, []);
+  const handlePowerToggle = useCallback(
+    (rowId: number) => {
+      togglePower(rowId);
+    },
+    [togglePower]
+  );
+
+  const handleSearch = useCallback(
+    (value: string) => {
+      setSearchTerm(value);
+    },
+    [setSearchTerm]
+  );
+
+  const handleCopyAll = useCallback(() => {
+    const allData = networkData.map((item) => item.ip).join("\n");
+    handleCopy(allData);
+  }, [networkData, handleCopy]);
 
   return (
     <div className="min-h-screen bg-black">
@@ -64,7 +92,12 @@ export default function Home() {
         </h1>
 
         <div className="flex gap-[110px] relative max-lg:flex-col-reverse max-lg:gap-0">
-          <StatsWidget onOpenModal={handleOpenModal} />
+          <StatsWidget
+            onOpenModal={handleOpenModal}
+            nodes={nodes}
+            totalNodes={totalNodes}
+            loading={nodesLoading}
+          />
 
           <div className="w-[711px] h-[425px] max-lg:w-full max-lg:h-[264px] max-lg:mb-5 relative">
             <MapComponent
@@ -89,20 +122,34 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <h2 className="text-white font-[Manrope] font-normal text-[22px]">Locations</h2>
 
-          <SearchBar />
+          <SearchBar onSearch={handleSearch} value={searchTerm} loading={networkLoading} />
         </div>
 
         <div className="mt-10" />
 
-        <TabButtons
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onCopyAll={() => handleCopy("Все данные скопированы")}
-        />
+        <TabButtons activeTab={activeTab} onTabChange={setActiveTab} onCopyAll={handleCopyAll} />
 
         <div className="mt-5" />
 
-        <DataTable data={TABLE_DATA} onCopy={handleCopy} onPowerToggle={handlePowerToggle} />
+        <DataTable
+          data={networkData}
+          onCopy={handleCopy}
+          onPowerToggle={handlePowerToggle}
+          sortConfig={sortConfig}
+          onSortByBlockHistory={sortByBlockHistory}
+          onSortByIndexation={sortByIndexation}
+          loading={networkLoading}
+        />
+
+        {/* Показываем ошибки если есть */}
+        {(nodesError || networkError) && (
+          <div className="mt-4 p-4 bg-red-900/20 border border-red-500/50 rounded-lg">
+            <p className="text-red-400 text-sm">
+              {nodesError && `Ошибка загрузки данных нод: ${nodesError}`}
+              {networkError && `Ошибка загрузки сетевых данных: ${networkError}`}
+            </p>
+          </div>
+        )}
       </div>
 
       <Notification message={copyNotification} />

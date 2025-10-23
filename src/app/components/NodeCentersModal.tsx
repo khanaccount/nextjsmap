@@ -11,6 +11,7 @@ interface NodeData {
   countryCode: string;
   ip: string;
   percentage: number;
+  count: number;
 }
 
 interface NodeCentersModalProps {

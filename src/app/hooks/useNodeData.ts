@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { fetchMapData } from "../services/api";
+import { processMapData, ProcessedNodeData, MapDataItem } from "../utils/dataProcessing";
 
-// Типы для данных нод
 export interface NodeData {
   id: string;
   name: string;
@@ -11,17 +12,17 @@ export interface NodeData {
   countryCode: string;
   ip: string;
   percentage: number;
+  count: number;
 }
 
-// Типы для состояния хука
 interface UseNodeDataReturn {
   nodes: NodeData[];
   loading: boolean;
   error: string | null;
   refetch: () => void;
+  totalNodes: number;
 }
 
-// Моковые данные для демонстрации
 const mockNodeData: NodeData[] = [
   {
     id: "1",
@@ -31,6 +32,7 @@ const mockNodeData: NodeData[] = [
     countryCode: "US",
     ip: "192.168.1.1",
     percentage: 25.5,
+    count: 25,
   },
   {
     id: "2",
@@ -40,6 +42,7 @@ const mockNodeData: NodeData[] = [
     countryCode: "DE",
     ip: "203.0.113.1",
     percentage: 20.3,
+    count: 20,
   },
   {
     id: "3",
@@ -49,6 +52,7 @@ const mockNodeData: NodeData[] = [
     countryCode: "JP",
     ip: "198.51.100.1",
     percentage: 18.7,
+    count: 18,
   },
   {
     id: "4",
@@ -58,6 +62,7 @@ const mockNodeData: NodeData[] = [
     countryCode: "GB",
     ip: "203.0.113.2",
     percentage: 15.2,
+    count: 15,
   },
   {
     id: "5",
@@ -67,6 +72,7 @@ const mockNodeData: NodeData[] = [
     countryCode: "RU",
     ip: "84.247.131.170",
     percentage: 12.8,
+    count: 12,
   },
   {
     id: "6",
@@ -76,95 +82,43 @@ const mockNodeData: NodeData[] = [
     countryCode: "FR",
     ip: "203.0.113.3",
     percentage: 10.5,
-  },
-  {
-    id: "7",
-    name: "Node Center Eta",
-    as: "AS55555",
-    country: "Canada",
-    countryCode: "CA",
-    ip: "198.51.100.2",
-    percentage: 8.9,
-  },
-  {
-    id: "8",
-    name: "Node Center Theta",
-    as: "AS66666",
-    country: "Australia",
-    countryCode: "AU",
-    ip: "203.0.113.4",
-    percentage: 7.3,
-  },
-  {
-    id: "9",
-    name: "Node Center Iota",
-    as: "AS77777",
-    country: "Brazil",
-    countryCode: "BR",
-    ip: "198.51.100.3",
-    percentage: 5.8,
-  },
-  {
-    id: "10",
-    name: "Node Center Kappa",
-    as: "AS88888",
-    country: "India",
-    countryCode: "IN",
-    ip: "203.0.113.5",
-    percentage: 4.2,
-  },
-  {
-    id: "11",
-    name: "Node Center Lambda",
-    as: "AS99999",
-    country: "South Korea",
-    countryCode: "KR",
-    ip: "198.51.100.4",
-    percentage: 3.1,
-  },
-  {
-    id: "12",
-    name: "Node Center Mu",
-    as: "AS10101",
-    country: "Italy",
-    countryCode: "IT",
-    ip: "203.0.113.6",
-    percentage: 2.7,
+    count: 10,
   },
 ];
 
-// Хук для получения данных нод
 export const useNodeData = (): UseNodeDataReturn => {
   const [nodes, setNodes] = useState<NodeData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [totalNodes, setTotalNodes] = useState(0);
 
-  // Функция для получения данных
   const fetchNodeData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Имитация API запроса
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const rawData = await fetchMapData();
 
-      // В реальном приложении здесь был бы запрос к API
-      // const response = await fetch('/api/map-data');
-      // const data = await response.json();
-
-      // Сортируем по убыванию процента
-      const sortedNodes = [...mockNodeData].sort((a, b) => b.percentage - a.percentage);
-
-      setNodes(sortedNodes);
+      if (rawData.length > 0) {
+        const processedData = processMapData(rawData);
+        const total = rawData.length;
+        setTotalNodes(total);
+        const sortedNodes = [...processedData].sort((a, b) => b.percentage - a.percentage);
+        setNodes(sortedNodes);
+      } else {
+        setNodes(mockNodeData);
+        setTotalNodes(100);
+        setError("Using demo data - no data received");
+      }
     } catch (err) {
-      setError("Ошибка при загрузке данных нод");
-      console.error("Error fetching node data:", err);
+      setError("Failed to fetch node data");
+      setNodes(mockNodeData);
+      setTotalNodes(100);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Загружаем данные при монтировании
   useEffect(() => {
     fetchNodeData();
   }, [fetchNodeData]);
@@ -174,5 +128,6 @@ export const useNodeData = (): UseNodeDataReturn => {
     loading,
     error,
     refetch: fetchNodeData,
+    totalNodes,
   };
 };

@@ -5,17 +5,29 @@ import React, { useState, useRef, useEffect } from "react";
 interface SearchBarProps {
   placeholder?: string;
   onSearch?: (value: string) => void;
+  value?: string;
+  loading?: boolean;
 }
 
-export default function SearchBar({ placeholder = "Search node", onSearch }: SearchBarProps) {
+export default function SearchBar({ 
+  placeholder = "Search node", 
+  onSearch, 
+  value = "",
+  loading = false 
+}: SearchBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  const [searchValue, setSearchValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  // Синхронизируем внутреннее состояние с внешним значением
+  useEffect(() => {
     setSearchValue(value);
-    onSearch?.(value);
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setSearchValue(newValue);
+    onSearch?.(newValue);
   };
 
   const handleClick = () => {
@@ -51,9 +63,18 @@ export default function SearchBar({ placeholder = "Search node", onSearch }: Sea
         <input
           type="text"
           placeholder={placeholder}
+          value={searchValue}
           onChange={handleChange}
-          className="block bg-transparent focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent w-[370px] py-[13px] pl-[46px] pr-5 border border-[#1B1C1F] rounded-full font-[Poppins] font-normal text-[13px] text-[#797979]"
+          disabled={loading}
+          className={`block bg-transparent focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent w-[370px] py-[13px] pl-[46px] pr-5 border border-[#1B1C1F] rounded-full font-[Poppins] font-normal text-[13px] text-[#797979] ${
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         />
+        {loading && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-5">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
       </div>
 
       {/* Мобильная версия - выдвигающийся инпут */}
@@ -81,10 +102,18 @@ export default function SearchBar({ placeholder = "Search node", onSearch }: Sea
             onChange={handleChange}
             onClick={handleClick}
             onBlur={handleBlur}
+            disabled={loading}
             className={`block bg-transparent focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-300 ease-in-out h-[41px] ${
               isExpanded ? "w-full pl-[46px] pr-5" : "w-[55px] pl-[46px] pr-0"
-            } border border-[#1B1C1F] rounded-full font-[Poppins] font-normal text-[13px] text-[#797979]`}
+            } border border-[#1B1C1F] rounded-full font-[Poppins] font-normal text-[13px] text-[#797979] ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           />
+          {loading && isExpanded && (
+            <div className="absolute inset-y-0 right-0 flex items-center pr-5">
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
       </div>
     </>
